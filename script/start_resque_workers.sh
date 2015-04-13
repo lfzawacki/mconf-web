@@ -18,7 +18,7 @@
 
 USER="$(id -u -n)"
 APP_PATH="$(dirname $0)/.."
-PATH=/home/$USER/.rbenv/bin:/home/$USER/.rbenv/shims:$PATH
+# PATH=/home/$USER/.rbenv/bin:/home/$USER/.rbenv/shims:$PATH
 RAILS_ENV=production
 NUM_WORKERS=3
 if [ -z "$3" ]; then WORKERNUM=1; else WORKERNUM=$3; fi
@@ -35,10 +35,9 @@ cd $APP_PATH
 
 if [ "$1" != "stop" ]; then
   if [ "$2" == "all" ]; then
-    /usr/bin/env bundle exec rake environment resque:work RAILS_ENV=$RAILS_ENV PIDFILE=$PIDFILE QUEUE="*" TERM_CHILD=1 >> $LOGFILE 2>&1 &
+    /usr/bin/env RBENV_ROOT=/usr/local/rbenv RBENV_VERSION=2.2.0 /usr/local/rbenv/bin/rbenv exec bundle exec rake environment resque:work RAILS_ENV=$RAILS_ENV PIDFILE=$PIDFILE QUEUE="*" TERM_CHILD=0 >> $LOGFILE 2>&1 &
   else
-    # for specific queues we run a single worker
-    /usr/bin/env bundle exec rake environment resque:work RAILS_ENV=$RAILS_ENV PIDFILE=$PIDFILE QUEUE=$2 TERM_CHILD=1 >> $LOGFILE 2>&1 &
+    /usr/bin/env RBENV_ROOT=/usr/local/rbenv RBENV_VERSION=2.2.0 /usr/local/rbenv/bin/rbenv exec bundle exec rake environment resque:work RAILS_ENV=$RAILS_ENV PIDFILE=$PIDFILE QUEUE=$2 TERM_CHILD=1 >> $LOGFILE 2>&1 &
   fi
 else
   echo "Stopping worker pid:$(cat $PIDFILE)" >> $LOGFILE

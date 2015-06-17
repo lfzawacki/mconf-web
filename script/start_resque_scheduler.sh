@@ -14,7 +14,7 @@
 
 USER="$(id -u -n)"
 APP_PATH="$(dirname $0)/.."
-PATH=/home/$USER/.rbenv/bin:/home/$USER/.rbenv/shims:$PATH
+# PATH=/home/$USER/.rbenv/bin:/home/$USER/.rbenv/shims:$PATH
 RAILS_ENV=production
 PIDFILE=$APP_PATH/tmp/pids/resque_scheduler.pid
 LOGFILE=$APP_PATH/log/resque_scheduler.log
@@ -22,7 +22,7 @@ LOGFILE=$APP_PATH/log/resque_scheduler.log
 cd $APP_PATH
 
 if [ "$1" != "stop" ]; then
-  /usr/bin/env bundle exec rake environment resque:scheduler RAILS_ENV=$RAILS_ENV VERBOSE=1 PIDFILE=$PIDFILE >> $LOGFILE 2>&1 &
+  /usr/bin/env RBENV_ROOT=/usr/local/rbenv RBENV_VERSION=2.2.0 /usr/local/rbenv/bin/rbenv exec bundle exec rake environment resque:scheduler RAILS_ENV=$RAILS_ENV VERBOSE=1 PIDFILE=$PIDFILE >> $LOGFILE 2>&1 &
 else
   kill -s QUIT $(cat $PIDFILE) && rm -f $PIDFILE; exit 0;
 fi

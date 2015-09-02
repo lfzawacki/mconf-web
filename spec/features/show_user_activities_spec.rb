@@ -1,3 +1,9 @@
+# This file is part of Mconf-Web, a web application that provides access
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
+#
+# This file is licensed under the Affero General Public License version
+# 3 or later. See the LICENSE file.
+
 require 'spec_helper'
 require 'support/feature_helpers'
 
@@ -23,13 +29,13 @@ feature 'Show user activity' do
 
   context 'on user with activities home page' do
     let(:user) { FactoryGirl.create(:user) }
-    let(:space) { FactoryGirl.create(:space) }
+    let(:space) { FactoryGirl.create(:space_with_associations) }
     before do
       space.add_member!(user)
       login_as(user, :scope => :user)
       # TODO, test it via controller doing those actions
-      space.new_activity 'create', user
-      space.new_activity 'update', user
+      space.new_activity :create, user
+      space.new_activity :update, user
       visit my_activity_path
     end
 

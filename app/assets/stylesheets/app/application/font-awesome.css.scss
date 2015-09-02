@@ -91,6 +91,10 @@ a .icon-awesome {
   color: $red;
 }
 
+.icon-mconf-waiting-moderation {
+  color: $yellow;
+}
+
 .icon-mconf-superuser {
   color: $red;
 }
@@ -179,6 +183,14 @@ a .icon-awesome {
 
 .icon-mconf-confirm-user {
   color: $green;
+}
+
+.icon-mconf-participant-confirmed {
+  color: $green;
+}
+
+.icon-mconf-participant-not-confirmed {
+  color: $red;
 }
 
 .icon-mconf-event {}

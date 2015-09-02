@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
-#
-# -------
+
 # Space is one of the most important models in the application.
 # Spaces consist of a group of multiple users and provide them with a single
 # conference room, a posts wall, document repository and space events.
@@ -35,8 +34,11 @@
 # * "space.leave": When user leaves a space (parameters: +user_id+, +username+)
 #
 
+require './lib/mconf/approval_module'
+
 class Space < ActiveRecord::Base
   include PublicActivity::Common
+  include Mconf::ApprovalModule
 
   # TODO: temporary, review
   USER_ROLES = ["Admin", "User"]
@@ -68,6 +70,10 @@ class Space < ActiveRecord::Base
   accepts_nested_attributes_for :bigbluebutton_room
   after_update :update_webconf_room
   after_create :create_webconf_room
+
+  def require_approval?
+    Site.current.require_space_approval?
+  end
 
   validates :description, :presence => true
 
@@ -116,8 +122,51 @@ class Space < ActiveRecord::Base
     Space::USER_ROLES.map { |r| Role.find_by_name(r) }
   end
 
+  def last_activity
+    RecentActivity.where(owner: self).last
+  end
+
+  # Order by when the last activity in the space happened.
+  # OPTIMIZE: Couldn't find a way to make Space.order_by_activity.count work. This query
+  #   doesn't work well when a COUNT() goes around it.
+  scope :order_by_activity, -> {
+    Space.default_join_for_activities(Space.arel_table[Arel.star],
+                                      'MAX(`activities`.`created_at`) AS lastActivity')
+      .group(Space.arel_table[:id])
+      .order('lastActivity DESC')
+  }
+
+  # Order by relevance: spaces that are currently more relevant to show to the users.
+  # Orders primarily by the last activity in the space, considering only the date and ignoring
+  # the time. Then orders by the number of activities.
+  # OPTIMIZE: Couldn't find a way to make Space.order_by_relevance.count work. This query
+  #   doesn't work well when a COUNT() goes around it.
+  scope :order_by_relevance, -> {
+    Space.default_join_for_activities(Space.arel_table[Arel.star],
+                                      'MAX(DATE(`activities`.`created_at`)) AS lastActivity',
+                                      'COUNT(`activities`.`id`) AS activityCount')
+      .group(Space.arel_table[:id])
+      .order('lastActivity DESC').order('activityCount DESC')
+  }
+
+  # Returns a relation with a pre-configured join that can be used in queries to find recent
+  # activities related to a space.
+  def self.default_join_for_activities(*args)
+    join_on = RecentActivity.arel_table[:owner_type].eq(Space.name)
+      .and(RecentActivity.arel_table[:owner_id].eq(Space.arel_table[:id]))
+      .or(RecentActivity.arel_table[:owner_type].eq(BigbluebuttonRoom.name)
+            .and(RecentActivity.arel_table[:owner_id].eq(BigbluebuttonRoom.arel_table[:id]))).to_sql
+    join_sql = "LEFT JOIN #{RecentActivity.table_name} ON (#{join_on})"
+
+    if args.count > 0
+      select(args).joins(:bigbluebutton_room).joins(join_sql)
+    else
+      joins(:bigbluebutton_room).joins(join_sql)
+    end
+  end
+
   # Returns the next 'count' events (starting in the current date) in this space.
-  def upcoming_events(count=5)
+  def upcoming_events(count = 5)
     self.events.upcoming.order("start_on ASC").first(5)
   end
 
@@ -128,19 +177,41 @@ class Space < ActiveRecord::Base
   # * +user+: user to be added as member
   # * +role_name+: A string denoting the role the user should receive after being added
   def add_member!(user, role_name='User')
-    p = Permission.new :user => user,
-      :subject => self,
-      :role => Role.find_by(name: role_name, stage_type: 'Space')
-
+    p = Permission.new(user: user,
+      subject: self,
+      role: Role.find_by(name: role_name, stage_type: 'Space')
+    )
     p.save!
   end
 
-  # Creates a new activity pertraining this space
-  def new_activity key, user, join_request=nil
+  # Removes a `user` from this space.
+  # If the user is a member, returns whether the user was removed or not.
+  # Otherwise returns always true.
+  #
+  # * +user+: user to be removed
+  def remove_member!(user)
+    p = Permission.where(user: user, subject: self)
+    p.empty? ? true : p.destroy_all.any?
+  end
+
+  # Creates a new activity related to this space
+  def new_activity(key, user, join_request = nil)
     if join_request
-      create_activity key, :owner => join_request, :parameters => { :user_id => user.id, :username => user.name }
+      create_activity key, owner: join_request, recipient: user, parameters: { :username => user.name }
     else
-      create_activity key, :owner => self, :parameters => { :user_id => user.id, :username => user.name }
+      params = { username: user.name }
+      # Treat update_logo and update as the same key
+      key = 'update' if key == 'update_logo'
+
+      if key.to_s == 'update'
+        # Don't create activity if the model was updated and nothing changed
+        attr_changed = previous_changes.except('updated_at').keys
+        return unless attr_changed.present?
+
+        params.merge!(changed_attributes: attr_changed)
+      end
+
+      create_activity key, owner: self, recipient: user, parameters: params
     end
   end
 
@@ -220,6 +291,14 @@ class Space < ActiveRecord::Base
     logo_image.present? && crop_x.present?
   end
 
+  def enabled?
+    !disabled?
+  end
+
+  def small_logo_image?
+    logo_image.height < 100 || logo_image.width < 100
+  end
+
   private
 
   # Creates the webconf room after the space is created
@@ -229,10 +308,11 @@ class Space < ActiveRecord::Base
       :server => BigbluebuttonServer.default,
       :param => self.permalink,
       :name => self.name,
-      :private => !self.public,
+      :private => false,
       :moderator_key => SecureRandom.hex(4),
       :attendee_key => SecureRandom.hex(4),
-      :logout_url => "/feedback/webconf/"
+      :logout_url => "/feedback/webconf/",
+      :dial_number => Mconf::DialNumber.generate(Site.current.try(:room_dial_number_pattern))
     }
     create_bigbluebutton_room(params)
   end
@@ -241,8 +321,7 @@ class Space < ActiveRecord::Base
   def update_webconf_room
     if self.bigbluebutton_room
       params = {
-        :name => self.name,
-        :private => !self.public
+        :name => self.name
       }
       bigbluebutton_room.update_attributes(params)
     end
@@ -261,5 +340,4 @@ class Space < ActiveRecord::Base
   def crop_logo
     logo_image.recreate_versions! if is_cropping?
   end
-
 end

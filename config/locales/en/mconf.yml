@@ -3,7 +3,7 @@ en:
   activities:
     attachment:
       create_html: uploaded the attachment %{name} in the space
-      delete_html: removed the attachment %{name} from the space
+      destroy_html: removed the attachment %{name} from the space
       update_html: updated the attachment %{name} in the space
       deleted: that has since been deleted
     bigbluebutton_meeting:
@@ -16,6 +16,7 @@ en:
       deleted: that has since been deleted
       invite_html: "was invited to join the space"
       invite_with_introducer_html: "was invited by <a href=\"%{introducer_url}\">%{introducer}</a> to join the space"
+      no_accept_html: "was added by <a href=\"%{introducer_url}\">%{introducer}</a> to the space"
       request_html: "has requested to join the space"
     mweb_events_event:
       create_html: created the event %{name} in the space
@@ -38,7 +39,9 @@ en:
       deleted: a message that has since been deleted
     space:
       accept_html: has joined the space
+      approved_html: approved the space
       create_html: created a new space
+      decline_html: had their invitation/request declined in the space
       deleted: a space that has since been deleted
       leave_html: has left the space
       update_html: updated info on space
@@ -54,7 +57,7 @@ en:
     datetimepicker:
       format_display: "%m/%d/%Y"
       format: "MM-dd-yyyy"
-      format_rails: "%m/%d/%Y %H:%M %z"
+      format_rails: "%m/%d/%Y %H:%M"
     decline: "Decline"
     deny: "Deny"
     destroy: "Destroy"
@@ -82,17 +85,21 @@ en:
     register_to_view_space: "Create an account to be able to join and access this space"
     save: "Save"
     send: "Send"
+    not_approved:
+      text: 'Waiting approval'
+      tooltip: 'Waiting approval, users are not able to view nor access this space yet'
     spam:
       title: "Spam"
       tooltip: "Report this item as a spam"
       icon_tooltip: "This item has been reported as spam and is being evaluated by the administrators"
     unpublish: "Unpublish"
     update: "Update"
+    updated_time_ago: "%{time} ago"
     upload: "Upload"
     user:
       administrator: "Global administrator"
       normal_user: "Normal user"
-      unapproved_user: "Waiting approval by admin"
+      unapproved_user: "Waiting approval"
       guest: "Guest"
       guest_name: "Guest User (%{email})"
       removed: "<user removed>"
@@ -158,6 +165,7 @@ en:
         exception_notifications_prefix: "Exception notifications subject prefix"
         external_help: "External help/FAQ page"
         feedback_url: "Feedback URL"
+        forbid_user_space_creation: "Forbid users from creating spaces"
         ldap_enabled: "LDAP: Enable authentication"
         ldap_filter: "LDAP: Filter for the user search"
         ldap_host: "LDAP: Server IP or domain"
@@ -173,7 +181,9 @@ en:
         name: "Name"
         presence_domain: "XMPP Chat Domain"
         registration_enabled: "Allow users to create new accounts"
-        require_registration_approval: "Require admins to approve new registrations"
+        require_registration_approval: "Moderate users"
+        require_space_approval: "Moderate spaces"
+        room_dial_number_pattern: 'Room dial number pattern'
         signature: "Signature"
         shib_always_new_account: "Shibboleth: Always create new account"
         shib_enabled: "Shibboleth: Enable"
@@ -182,6 +192,7 @@ en:
         shib_login_field: "Shibboleth: Field for login"
         shib_name_field: "Shibboleth: Field for name"
         shib_principal_name_field: "Shibboleth: Field for principal name (unique ID)"
+        shib_update_users: "Shibboleth: Update user information"
         smtp_auth_type: "STMP authentication type"
         smtp_auto_tls: "Auto STARTTLS"
         smtp_domain: "STMP domain"
@@ -193,6 +204,7 @@ en:
         smtp_use_tls: "Use TLS in STMP"
         ssl: "SSL"
         timezone: "Timezone"
+        visible_locales: "Visible languages"
         xmpp_server: "XMPP Server Address"
         webconf_auto_record: "Automatically set the recording flag when creating a web conference"
       space:
@@ -269,7 +281,7 @@ en:
     not_selected: "No document selected"
     one: Attachment
     other: Attachments
-    repository_disabled: This space's document repository is not enabled.
+    repository_disabled: "This space's document repository is not enabled."
     selected: 
       none: "No files selected"
       one: " file selected"
@@ -457,6 +469,7 @@ en:
     edit:
       editing_room: "Editing room '%{room}'"
     form:
+      layout_empty_option: "<default>"
       metadata:
         add: "Add metadata"
         set_to_remove: "Set to remove"
@@ -467,7 +480,9 @@ en:
       at: "at"
       duration: "Duration"
       meeting_in: "Inviting people to a meeting in:"
-      timezone: "You are using the time zone %{timezone}"
+      offset: "Your current time offset is \"%{offset}\""
+      offset_daylight_savings: "Your current time offset is \"%{offset}\" (daylight saving time is in effect)"
+      timezone: "The dates below are using the time zone \"%{timezone}\""
       title: "Invite people to a meeting"
       users:
         hint: "Type to start searching"
@@ -504,8 +519,8 @@ en:
     join_mobile:
       click_to_download_android: "Click here to download the Android client"
       click_to_download_ios: "Click here to download the Apple iOS (iPad, iPhone) client"
-      download_android_tip: "Para dispositivos com Android"
-      download_ios_tip: "Para dispositivos com Apple iOS (iPad, iPhone)"
+      download_android_tip: "For devices with Android"
+      download_ios_tip: "For devices with Apple iOS (iPad, iPhone)"
       not_launched: "If the application was not launched, make sure you have the Android mobile client installed. You can get it from:"
       notice : "You are being redirected to the conference in your mobile device, please wait."
       title: "Mobile access to \"%{room}\""
@@ -582,6 +597,9 @@ en:
     rooms:
       list_of_rooms: "List of all rooms for the server '%{server}'"
     show:
+      available_layouts: "Available layouts"
+      configurations: "Server configurations"
+      configurations_tip: "These configurations are automatically fetched from the server and cannot be modified here. They are fetched periodically (every ~3h) by a background process and also whenever the URL, salt or version of the server change."
       fetch_recordings_title: "Fetch recordings with parameters"
       fetch_recordings_btn: "Fetch recordings"
       publish_recordings_title: "Publish recordings"
@@ -608,12 +626,6 @@ en:
     failure:
       user:
         not_approved: "Your account has not yet been approved by an administrator."
-    mailer:
-      confirmation_instructions:
-        confirmation_link: "Confirm my account"
-        confirmation_ok: "You can confirm your account email through the link below:"
-        confirmation_pending: "Your account was created and is waiting the approval of an administrator."
-        welcome: "Welcome %{email}!"
     registrations:
       not_enabled: "Registration of new accounts is not enabled in this website."
       signed_up_but_not_approved: ""
@@ -686,6 +698,7 @@ en:
     one: Error
     other: Errors
     vcc_warning: "Warning:"
+  fax: Fax
   feedback: 
     create:
       check_mail: "Please check the email you informed in the feedback form, it seems wrong."
@@ -729,12 +742,13 @@ en:
     invite_url: "Invite URL"
     my: "My Home"
     my_spaces: "My spaces"
-    no_spaces: "You not belong to any spaces. You can see the spaces available <a href=\"%{link}\">here</a>."
+    no_spaces: "You do not belong to any spaces. You can see the spaces available <a href=\"%{link}\">here</a>."
     one: home
     view_invite_url: "View Invite URL"
   icons: 
     unread_message: "Unread message!"
     unread_message_by_receiver: "This message has not yet been read by the receiver"
+  im: IM
   inbox: 
     my: "My Inbox (%{checked})"
     one: "Inbox (%{checked})"
@@ -806,6 +820,8 @@ en:
       error: "Something went wrong when processing your request, please try again. (details: %{errors})"
       sent: "Your invitation was successfully sent to: %{users}"
       user_not_found: "User not found: %{id}"
+      users_added: "You have successfully added the user(s) %{users} to this space"
+      you_are_already_a_member: "You are already a member of this space"
     decline:
       declined: "Join request declined"
       invitation_destroyed: "Invitation successfully cancelled"
@@ -828,6 +844,9 @@ en:
       candidates: "Search users to invite"
       role_label: "Role for the users invited"
       title: "Invite people to join this space"
+      type_add: "Add users directly"
+      type_add_tooltip: "The users will be added to the space without being asked for confirmation. A notification is sent to the users to inform them they were added."
+      type_invite: "Invite"
       users:
         hint: "Type to start searching"
         no_results: "No results found"
@@ -873,7 +892,7 @@ en:
       manage: "Manage"
       register: "Register"
     footer:
-      copyright: "© 2010-2014 %{site}."
+      copyright: "© 2010-%{year} %{site}."
       current_version: "Current version"
       find_us: "Find more about Mconf"
       github: GitHub
@@ -893,16 +912,18 @@ en:
         help_us: "Want this site in your language? Click to see how to help us translate it!"
       wiki: "Wiki"
     footer_simple:
-      copyright: "© 2010-2014 %{site}."
+      copyright: "© 2010-%{year} %{site}."
       translate:
         change: "Switch language"
     spaces_page_title:
       is_member: "You are a member of this space"
+      manage_to_approve: "manage"
       private: "Private space"
       public: "Public space"
   less: "less..."
   locales: 
     en: English
+    es-419: "Español (América Latina)"
     pt-br: "Português (Brasil)"
     error: "Locale not registered"
   login_or_register: "Login / Register"
@@ -928,8 +949,12 @@ en:
       enable: "Enable user"
       enable_confirm: "Are you sure you want to enable this user?"
     enabled_space:
+      approve: "Approve: unlock the access to this space"
+      approve_confirm: "Are you sure you want to unlock the access to this space?"
       disable: "Disable space"
       disable_confirm: "Are you sure you want to disable this space?"
+      disapprove: "Disapprove: block the access to this space"
+      disapprove_confirm: "Are you sure you want to block the access to this space?"
       edit: "Edit space"
     enabled_user:
       approve: "Approve: allow this user to access the website"
@@ -949,11 +974,14 @@ en:
       users: "Users"
       webconf: "Web Conference"
     spaces:
-      filter_name: "Name"
-      filter_results: "Filter the results:"
+      filter_name: "Filter spaces by name"
+      new_space: "Create space"
     destroy_space:
       destroy: Delete space
       destroy_confirm: Are you sure you want to delete this space and all content associated with it? Unlike disabling the space this operation is irreversible!
+    destroy_user:
+      destroy: Delete user
+      destroy_confirm: Are you sure you want to delete this user and all content associated with it? Unlike disabling the user this operation is irreversible!
     spaces_list:
       filter_count_with_text: "Found %{count} spaces for filter \"%{value}\""
       filter_count_empty: "Found %{count} spaces"
@@ -973,9 +1001,16 @@ en:
         not_spam_tooltip: "This post is not a spam"
         title: "Posts marked as spam"
     users:
-      filter_name_or_username: "Name, username or email"
-      filter_results: "Filter the results:"
+      filter_name_or_username: "Filter users by name, username or email"
       new_user: "Create user"
+      admin_true: Admins
+      admin_false: Users
+      approved_true: Approved
+      approved_false: Not approved
+      disabled_true: Disabled
+      disabled_false: Enabled
+      can_record_true: Can record
+      can_record_false: Can't record
     users_list:
       filter_count_with_text: "Found %{count} users for filter \"%{value}\""
       filter_count_empty: "Found %{count} users"
@@ -1098,6 +1133,9 @@ en:
   past: Past
   people: people
   per_page: "per page"
+  participant_confirmation:
+    confirmed: "The registration for %{email} has been confirmed"
+    cancelled: "Your registration in this event has been cancelled"
   permission:
     notification:
       default: "%{username} has change your role in %{stage} to %{role}. "
@@ -1375,10 +1413,6 @@ en:
   show_advanced_editor: "Show advanced editor"
   show_list_version_arrows: "show list version >>"
   show_question: Show?
-  simple_captcha: 
-    label: "Insert here the text from the image"
-    message: 
-      user: "is incorrect"
   site:
     updated: "Site configurations updated"
   size: Size
@@ -1397,6 +1431,7 @@ en:
     configuration: "Space configuration"
     confirm: "Are you sure you want to leave this space?"
     created: "Space created successfully"
+    created_waiting_moderation: "Space created successfully! Please wait for an admin to approve your space before other users can access it."
     delete: "Delete Space"
     deleted: "Space removed successfully"
     description: "Space Description"
@@ -1416,6 +1451,11 @@ en:
       filters: 
         all: "All spaces"
         my_spaces: "My spaces"
+      order:
+        alphabetic: "Name"
+        order_by: "Order by"
+        relevance: "Relevance"
+        relevance_tip: "Shows the spaces with the most recent activities at the top"
       select_at_left: "Select a space in the list to see it's description here"
       user_is_member: "You are a member!"
     is_private: "is a private space. Send a join request to the administrator of this space to let you in"
@@ -1458,6 +1498,9 @@ en:
     public: 
       one: "Public space"
       other: "Public spaces"
+    remove_user:
+      confirm: "Are you sure you want to remove this user from the space?"
+      remove: "Remove user"
     select: Spaces
     show: "Show spaces:"
     show_all: "Show all spaces"
@@ -1510,6 +1553,12 @@ en:
       news: "News"
       users: "Users"
       webconf_options: "Webconference options"
+      add_member: "Add members"
+    approve:
+      approved: "The space %{name} was approved"
+    disapprove:
+      disapproved: "The space %{name} was disapproved"
+      not_enabled: "Moderation of spaces is not enabled"
     edit:
       change_logo: "Change picture"
       delete_confirmation: "Are you sure? This space will be inaccessible to you and to all the other users!"
@@ -1521,8 +1570,10 @@ en:
       title: "Edit your recording"
     error:
       already_invited: "You were already invited to join this space, please accept or decline the invitation"
+      creation_forbidden: "You are not allowed to create spaces"
       need_join_to_access: "You need to join this space to access it. Send a join request to the administrators."
       not_found: "The space \"%{permalink}\" was not found. <br> Would you like to search for it in <a href=\"%{path}\">all spaces</a>?"
+      unapproved: "This space was not yet approved by an administrator."
     index: 
       create_new_space: "Create a new space"
       list_format: 
@@ -1567,6 +1618,7 @@ en:
         currently_running:
           one: "The webconference is currently in progress with %{count} participant"
           other: "The webconference is currently in progress with %{count} participants"
+        dial_number: "Dial number"
       webconference_join: "Join it"
       webconference_start: "Start it"
     sidebar_notifications:
@@ -1604,6 +1656,11 @@ en:
       user_is_member: "You are a member of this space"
       view_join_request: "View the request you sent"
       with_members: "with %{count} members"
+    user_permissions:
+      confirm_leave_space: "Are you sure you want to leave this space?"
+      leave_space: "Leave this space"
+      confirm_remove_user: "Are you sure you want to remove this user from the space?"
+      remove_user: "Remove the user from the space"
     users: "Users in this space"
     webconference:
       end: "Stop the meeting"
@@ -1663,6 +1720,9 @@ en:
   subject: "Subject:"
   summary: "Video Info"
   superuser: "Administrator"
+  sites:
+    edit:
+      shib_warning_html: "This field is used as the unique identifier for Shibboleth users. If you modify it your users may be unable to access their accounts, before changing it read <a href=\"https://github.com/mconf/mconf-web/wiki/Shibboleth:-migrate-users-to-use-EPPN\">this page</a>."
   text: Text
   the_string: "the string"
   thread: 
@@ -1716,7 +1776,6 @@ en:
   update: Update
   updated: Updated
   updated_at: "Updated at"
-  updated_time_ago: "%{time} ago"
   url: Website
   url_add: "Add your Website"
   url_plain: URL
@@ -1730,6 +1789,7 @@ en:
     category: Category
     confirm_password: "Confirm password"
     delete_from_space: "Delete user from space"
+    deleted: "User deleted"
     disable: "Disable user"
     disabled: "User %{username} disabled"
     email_used_to_create_account: "Enter the email address you used to create your account"
@@ -1775,7 +1835,7 @@ en:
     vcc_email: "Mconf user e-mail %{dir}"
   users:
     approve:
-      approved: "The user %{username} was approved to access the website!"
+      approved: "The user %{name} was approved to access the website!"
       not_enabled: "Approval of registrations is not enabled in this website"
     create:
       error: "Errors creating the user: %{errors}"
@@ -1785,7 +1845,7 @@ en:
     detailed_user:
       from: "From:"
     disapprove:
-      disapproved: "The user %{username} was blocked from accessing the website!"
+      disapproved: "The user %{name} was blocked from accessing the website!"
       not_enabled: "Approval of registrations is not enabled in this website"
     edit:
       account_info: "Account info"
@@ -1832,6 +1892,12 @@ en:
     progress: "{percent}% of {total_size}"
     drag_files: Drag and drop files here to upload
     processing: Processing...
+    error:
+      invalid_extension: "{file} has an invalid extension. Valid extension(s): {extensions}."
+      invalid_size: "{file} is too large, maximum file size is {sizeLimit}."
+      empty_file: "{file} is empty, please select files again without it."
+      no_files: "No files to upload."
+      on_leave: "The files are being uploaded, if you leave now the upload will be cancelled."
   vCard: 
     corrupt: "The vCard you sent is corrupted or is a non-supported version"
     message: "Use your vCard to automatically fill in your profile"

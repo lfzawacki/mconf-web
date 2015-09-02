@@ -1,5 +1,5 @@
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
@@ -47,9 +47,8 @@ class Invitation < ActiveRecord::Base
   def self.build_flash(list, message)
     msg = message + " "
     msg += list.map { |user|
-      user.is_a?(User) ? user.full_name : user
+      user.is_a?(User) ? ActionController::Base.helpers.strip_tags(user.full_name) : user
     }.join(", ")
-    msg
   end
 
   # Checks if the invitations in `invitations` are valid or will fail when sent.

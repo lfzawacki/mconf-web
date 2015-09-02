@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
@@ -473,7 +473,7 @@ describe Mconf::Shibboleth do
     context "returns the token using the information in the session" do
       before {
         ShibToken.create!(:identifier => 'any@email.com', :user => user)
-        shibboleth.should_receive(:get_email).and_return('any@email.com')
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
       }
       subject { shibboleth.find_token }
       it { subject.identifier.should eq('any@email.com') }
@@ -482,11 +482,84 @@ describe Mconf::Shibboleth do
 
     context "returns nil of there's no token" do
       before {
-        shibboleth.should_receive(:get_email).and_return('any@email.com')
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
       }
       subject { shibboleth.find_token }
       it { subject.should be_nil }
     end
+  end
+
+  describe "#find_and_update_token" do
+    let(:shibboleth) { Mconf::Shibboleth.new({}) }
+    let(:user) { FactoryGirl.create(:user) }
+
+    context "returns the token using the information in the session" do
+      before {
+        ShibToken.create!(identifier: 'any@email.com', user: user)
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
+      }
+      subject { shibboleth.find_and_update_token }
+      it { subject.identifier.should eq('any@email.com') }
+      it { subject.user.should eq(user) }
+    end
+
+    context "returns nil of there's no token" do
+      before {
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
+      }
+      subject { shibboleth.find_and_update_token }
+      it { subject.should be_nil }
+    end
+
+    context "updates the token with the info in the session" do
+      let(:old_data) { { "Shib-cn": "My Name", "Shib-id": 12345, "AnotherParam": "no value" } }
+      let(:new_data) { { "Shib-cn": "New Name", "AnotherParam": 12345 } }
+      let(:shibboleth) { Mconf::Shibboleth.new({ shib_data: new_data }) }
+      before {
+        ShibToken.create!(identifier: 'any@email.com', user: user, data: old_data)
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
+      }
+      subject {
+        token = shibboleth.find_and_update_token
+        token.reload
+        token
+      }
+      it { subject.data.should eq(new_data) }
+    end
+
+    context "doesn't save if there's no data in the session" do
+      let(:old_data) { { "Shib-cn": "My Name", "Shib-id": 12345, "AnotherParam": "no value" } }
+      let(:new_data) { nil }
+      let(:shibboleth) { Mconf::Shibboleth.new({ shib_data: new_data }) }
+      before {
+        ShibToken.create!(identifier: 'any@email.com', user: user, data: old_data)
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
+      }
+      subject {
+        token = shibboleth.find_and_update_token
+        token.reload
+        token
+      }
+      it { subject.data.should eq(old_data) }
+    end
+
+    context "doesn't save if the data in the session is empty" do
+      let(:old_data) { { "Shib-cn": "My Name", "Shib-id": 12345, "AnotherParam": "no value" } }
+      let(:new_data) { {} }
+      let(:shibboleth) { Mconf::Shibboleth.new({ shib_data: new_data }) }
+      before {
+        ShibToken.create!(identifier: 'any@email.com', user: user, data: old_data)
+        shibboleth.should_receive(:get_identifier).and_return('any@email.com')
+      }
+      subject {
+        token = shibboleth.find_and_update_token
+        token.reload
+        token
+      }
+      it { subject.data.should eq(old_data) }
+    end
+
+    it "returns the errors in the token if it failed to update"
   end
 
   describe "#find_or_create_token" do
@@ -495,15 +568,17 @@ describe Mconf::Shibboleth do
 
     context "returns the token using the information in the session" do
       before {
-        shibboleth.should_receive(:get_email).at_least(:once).and_return('any@email.com')
+        shibboleth.should_receive(:get_identifier).at_least(:once).and_return('any@email.com')
+        @token = shibboleth.find_or_create_token
+        @token.user = user
+        @token.save!
       }
-      subject { shibboleth.find_or_create_token }
-      it { subject.should eq(ShibToken.find_by_identifier('any@email.com')) }
+      it { @token.should eq(ShibToken.find_by_identifier('any@email.com')) }
     end
 
     context "creates the token if there's no token yet" do
       before {
-        shibboleth.should_receive(:get_email).at_least(:once).and_return('any@email.com')
+        shibboleth.should_receive(:get_identifier).at_least(:once).and_return('any@email.com')
       }
       subject { shibboleth.find_or_create_token }
       it { subject.should_not be_nil }
@@ -516,13 +591,18 @@ describe Mconf::Shibboleth do
     let(:shibboleth) { Mconf::Shibboleth.new({}) }
 
     context "creates a new user" do
+      let(:token) { ShibToken.new(identifier: 'any@email.com') }
       before {
-        shibboleth.should_receive(:get_email).and_return('any@email.com')
+        shibboleth.should_receive(:get_email).at_least(:once).and_return('any@email.com')
         shibboleth.should_receive(:get_login).and_return('any-login')
         shibboleth.should_receive(:get_name).and_return('Any Name')
       }
       before(:each) {
-        expect { @subject = shibboleth.create_user }.to change{ User.count }.by(1)
+        expect {
+          @subject = shibboleth.create_user(token)
+          token.user = @subject
+          token.save!
+        }.to change{ User.count }.by(1)
       }
       it { @subject.should eq(User.last) }
       it { @subject.errors.should be_empty }
@@ -537,18 +617,25 @@ describe Mconf::Shibboleth do
     end
 
     context "parameterizes the login" do
+      let(:token) { ShibToken.new(identifier: 'any@email.com') }
       before {
-        shibboleth.should_receive(:get_email).and_return('any@email.com')
+        shibboleth.should_receive(:get_email).at_least(:once).and_return('any@email.com')
         shibboleth.should_receive(:get_login).and_return('My Login Áàéë (test)')
         shibboleth.should_receive(:get_name).and_return('Any Name')
       }
-      subject { shibboleth.create_user }
+      subject { shibboleth.create_user token }
       it { subject.username.should eq('my-login-aaee-test') }
     end
 
     context "returns the user with errors set in it if the call to `save` generated errors" do
       let(:user) { FactoryGirl.create(:user) }
-      subject { shibboleth.create_user }
+      let(:token) { ShibToken.new(identifier: 'dummy_shib@tok.en') }
+      subject {
+        expect {
+          @user = shibboleth.create_user(token)
+        }.not_to change{ User.count }
+        @user
+      }
       it("should return the user") { subject.should_not be_nil }
       it("user should not be saved") { subject.new_record?.should be(true) }
       it("user should not be valid") { subject.valid?.should be(false) }

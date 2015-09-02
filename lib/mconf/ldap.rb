@@ -1,5 +1,5 @@
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
@@ -45,7 +45,7 @@ module Mconf
       if token.nil?
         nil
       else
-        token.user = create_account(email, username, name)
+        token.user = create_account(email, username, name, token)
         if token.user && token.save
           token.user
         else
@@ -89,14 +89,14 @@ module Mconf
 
     # Create the user account if there is no user with the email provided by ldap
     # Or returns the existing account with the email
-    def create_account(id, username, full_name)
+    def create_account(id, username, full_name, ldap_token)
       # we need this to make sure the values are strings and not string-like objects
       # returned by LDAP, otherwise the user creation might fail
       id = id.to_s
       username = username.to_s
       full_name = full_name.to_s
 
-      user = User.find_by_email(id)
+      user = User.where('lower(email) = ?', id.downcase).first
       if user
         Rails.logger.info "LDAP: there's already a user with this id (#{id})"
       else
@@ -111,40 +111,43 @@ module Mconf
         }
         user = User.new(params)
         user.skip_confirmation!
-        unless user.save
+        if user.save
+          create_notification(user, ldap_token)
+        else
           Rails.logger.error "LDAP: error while saving the user model"
-          Rails.logger.error "Errors: " + user.errors.full_messages.join(", ")
+          Rails.logger.error "LDAP: errors: " + user.errors.full_messages.join(", ")
           user = nil
         end
-        send_notification(user)
       end
       user
     end
 
     def user_info(ldap_user, ldap_configs)
-      if ldap_user[ldap_configs.ldap_username_field]
+      if ldap_user[ldap_configs.ldap_username_field] && !ldap_user[ldap_configs.ldap_username_field].empty?
         username = ldap_user[ldap_configs.ldap_username_field].first
       else
-        username = ldap_user.uid
+        username = ldap_user['uid'].first
       end
-      if ldap_user[ldap_configs.ldap_email_field]
+      username.gsub!(/@[^@]+$/, '') unless username.nil? # use only the first part if this is an email
+      if ldap_user[ldap_configs.ldap_email_field] && !ldap_user[ldap_configs.ldap_email_field].empty?
         email = ldap_user[ldap_configs.ldap_email_field].first
       else
-        email = ldap_user.mail
+        email = ldap_user['mail'].first
       end
-      if ldap_user[ldap_configs.ldap_name_field]
+      if ldap_user[ldap_configs.ldap_name_field] && !ldap_user[ldap_configs.ldap_name_field].empty?
         name = ldap_user[ldap_configs.ldap_name_field].first
       else
-        name = ldap_user.cn
+        name = ldap_user['cn'].first
       end
       [username, email, name]
     end
 
-    # Sending a notification email to a user that registered
-    def send_notification(user)
-      if user.present? && user.errors.blank?
-        UserMailer.registration_notification_email(user.id).deliver
-      end
+    private
+
+    def create_notification(user, token)
+      RecentActivity.create(
+        key: 'ldap.user.created', owner: token, trackable: user, notified: false
+      )
     end
 
   end

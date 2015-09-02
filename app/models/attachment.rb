@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
 
 class Attachment < ActiveRecord::Base
+  include PublicActivity::Model
+  tracked owner: :space
+
   belongs_to :space
   belongs_to :author, :polymorphic => true
 
@@ -69,6 +72,7 @@ class Attachment < ActiveRecord::Base
 
   protected
 
+  # Adds the content_type and size attributes to the attachment
   def update_attachment_attributes
     if attachment.present? && attachment_changed?
       self.content_type = attachment.file.content_type

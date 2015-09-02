@@ -1,5 +1,5 @@
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
@@ -90,7 +90,7 @@ describe Profile do
   end
 
   describe "abilities", :abilities => true do
-    set_custom_ability_actions([:update_logo])
+    set_custom_ability_actions([:update_logo, :update_full_name])
     subject { ability }
     let(:ability) { Abilities.ability_for(user) }
     let(:target) { FactoryGirl.create(:user).profile }
@@ -101,14 +101,14 @@ describe Profile do
         visibilities.each do |visibility|
           it "'#{visibility}'" do
             target.visibility = Profile::VISIBILITY.index(visibility)
-            should_not be_able_to_do_anything_to(target).except(:read)
+            should_not be_able_to_do_anything_to(target).except([:index, :show])
           end
         end
         Profile::VISIBILITY.each do |visibility|
           unless visibilities.include?(visibility)
             it "'#{visibility}'" do
               target.visibility = Profile::VISIBILITY.index(visibility)
-              should_not be_able_to_do_anything_to(target)
+              should_not be_able_to_do_anything_to(target).except(:index)
             end
           end
         end
@@ -120,10 +120,39 @@ describe Profile do
       context "regardless of the profile's visibility" do
         Profile::VISIBILITY.each do |visibility|
           before { target.visibility = Profile::VISIBILITY.index(visibility) }
-          it { should be_able_to(:read, target) }
+          it { should be_able_to(:show, target) }
           it { should be_able_to(:update, target) }
           it { should be_able_to(:update_logo, target) }
         end
+      end
+
+      context "if the target user is disabled" do
+        before { target.user.disable }
+        it { should_not be_able_to_do_anything_to(target) }
+      end
+
+      context "cannot edit the full name if the account was created by shib" do
+        before {
+          Site.current.update_attributes(shib_update_users: true)
+          FactoryGirl.create(:shib_token, user: target.user, new_account: true)
+        }
+        it { should_not be_able_to(:update_full_name, target) }
+      end
+
+      context "can edit the full name if the account was not created by shib" do
+        before {
+          Site.current.update_attributes(shib_update_users: true)
+          FactoryGirl.create(:shib_token, user: target.user, new_account: false)
+        }
+        it { should be_able_to(:update_full_name, target) }
+      end
+
+      context "can edit the full name if the site is not updating user information automatically" do
+        before {
+          Site.current.update_attributes(shib_update_users: false)
+          FactoryGirl.create(:shib_token, user: target.user, new_account: true)
+        }
+        it { should be_able_to(:update_full_name, target) }
       end
     end
 
@@ -132,19 +161,34 @@ describe Profile do
       context "regardless of the profile's visibility" do
         Profile::VISIBILITY.each do |visibility|
           before { target.visibility = Profile::VISIBILITY.index(visibility) }
-          it { should be_able_to(:manage, target) }
+          it { should be_able_to_do_everything_to(target) }
         end
+      end
+
+      context "if the target user is disabled" do
+        before { target.user.disable }
+        it { should be_able_to_do_everything_to(target) }
       end
     end
 
     context "when is an anonymous user" do
       let(:user) { User.new }
       it_should_behave_like "a profile's ability", [:everybody]
+
+      context "if the target user is disabled" do
+        before { target.user.disable }
+        it { should_not be_able_to_do_anything_to(target) }
+      end
     end
 
     context "when is a website member (but not a fellow)" do
       let(:user) { FactoryGirl.create(:user) }
       it_should_behave_like "a profile's ability", [:everybody, :members]
+
+      context "if the target user is disabled" do
+        before { target.user.disable }
+        it { should_not be_able_to_do_anything_to(target) }
+      end
     end
 
     context "when is a public fellow user" do
@@ -156,6 +200,11 @@ describe Profile do
       }
       it_should_behave_like "a profile's ability",
         [:everybody, :members, :public_fellows]
+
+      context "if the target user is disabled" do
+        before { target.user.disable }
+        it { should_not be_able_to_do_anything_to(target) }
+      end
     end
 
     context "when is a private fellow user" do
@@ -167,6 +216,11 @@ describe Profile do
       }
       it_should_behave_like "a profile's ability",
         [:everybody, :members, :public_fellows, :private_fellows]
+
+      context "if the target user is disabled" do
+        before { target.user.disable }
+        it { should_not be_able_to_do_anything_to(target) }
+      end
     end
   end
 

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
 
 class SpacesController < ApplicationController
+  include Mconf::ApprovalControllerModule # for approve, disapprove
+
   before_filter :authenticate_user!, :only => [:new, :create]
 
   load_and_authorize_resource :find_by => :permalink, :except => [:edit_recording, :enable, :destroy, :disable]
@@ -29,23 +31,26 @@ class SpacesController < ApplicationController
   rescue_from ActiveRecord::RecordNotFound, :with => :handle_record_not_found
 
   # Create recent activity
-  after_filter :only => [:create, :update, :leave] do
-    @space.new_activity params[:action], current_user unless @space.errors.any? || @space.is_cropping?
+  after_filter :only => [:create, :update, :update_logo, :leave] do
+    @space.new_activity(params[:action], current_user) unless @space.errors.any?
   end
 
   def index
-    if params[:view].nil? or params[:view] != "list"
-      params[:view] = "thumbnails"
-    end
-    spaces = Space.order('name ASC')
-    @spaces = spaces.paginate(:page => params[:page], :per_page => 18)
+    params[:view] = 'thumbnails' if params[:view].nil? || params[:view] != 'list'
+    params[:order] = 'relevance' if params[:order].nil? || params[:order] != 'abc'
 
+    spaces = Space.where(approved: true)
     @user_spaces = user_signed_in? ? current_user.spaces : Space.none
-    @user_spaces = @user_spaces.paginate(:page => params[:page], :per_page => 18)
 
-    if @space
-       session[:current_tab] = "Spaces"
+    @spaces = params[:my_spaces] ? @user_spaces : spaces
+    if params[:order] == 'abc'
+      @spaces = @spaces.order('name ASC').paginate(:page => params[:page], :per_page => 18)
+    else
+      @spaces = @spaces.order_by_activity.paginate(:page => params[:page], :per_page => 18)
     end
+
+    session[:current_tab] = "Spaces" if @space
+
     if params[:manage]
       session[:current_tab] = "Manage"
       session[:current_sub_tab] = "Spaces"
@@ -93,8 +98,15 @@ class SpacesController < ApplicationController
         # the user that created the space is always an admin
         @space.add_member!(current_user, 'Admin')
 
-        flash[:success] = t('space.created')
-        format.html { redirect_to :action => "show", :id => @space  }
+        # pre-approve the space if it's an admin creating it
+        @space.approve! if can?(:approve, @space)
+
+        if @space.approved?
+          flash[:success] = t('space.created')
+        else
+          flash[:success] = t('space.created_waiting_moderation')
+        end
+        format.html { redirect_to action: "show", id: @space }
       end
     else
       respond_with @space do |format|
@@ -111,12 +123,17 @@ class SpacesController < ApplicationController
     @space.logo_image = params[:uploaded_file]
 
     if @space.save
+      url = logo_images_crop_path(:model_type => 'space', :model_id => @space)
       respond_to do |format|
-        url = logo_images_crop_path(:model_type => 'space', :model_id => @space)
-        format.json { render :json => { :success => true, :redirect_url => url } }
+        format.json {
+          render :json => {
+            success: true, redirect_url: url, small_image: @space.small_logo_image?,
+            new_url: @space.logo_image.url
+          }
+        }
       end
     else
-      format.json { render :json => { :success => false } }
+      format.json { render json: { success: false } }
     end
   end
 
@@ -197,7 +214,7 @@ class SpacesController < ApplicationController
       respond_to do |format|
         format.html {
           flash[:success] = t('space.leave.success', :space_name => @space.name)
-          if can?(:read, @space)
+          if can?(:show, @space)
             redirect_to space_path(@space)
           else
             redirect_to root_path
@@ -282,7 +299,7 @@ class SpacesController < ApplicationController
 
   def load_spaces_examples
     # TODO: RAND() is specific for mysql
-    @spaces_examples = Space.order('RAND()').limit(3)
+    @spaces_examples = Space.where(approved: true).order('RAND()').limit(3)
   end
 
   def load_events
@@ -302,10 +319,14 @@ class SpacesController < ApplicationController
     if !user_signed_in?
       redirect_to login_path
 
-    # if it's a logged user that tried to access a private space
+    # if it's a logged user that tried to access a private or unnaproved space
     elsif [:show, :edit].include?(exception.action)
 
-      if @space.pending_join_request_for?(current_user)
+      if !@space.approved?
+        flash[:error] = t("spaces.error.unapproved")
+        redirect_to spaces_path
+
+      elsif @space.pending_join_request_for?(current_user)
         # redirect him to the page to ask permission to join, but with a warning that
         # a join request was already sent
         redirect_to new_space_join_request_path :space_id => params[:id]
@@ -322,6 +343,11 @@ class SpacesController < ApplicationController
         redirect_to new_space_join_request_path :space_id => params[:id]
       end
 
+    # when space creation is forbidden for users
+    elsif [:create, :new].include? exception.action
+      flash[:error] = t("spaces.error.creation_forbidden")
+      redirect_to spaces_path
+
     # destructive actions are redirected to the 403 error
     else
       flash[:error] = t("space.access_forbidden")
@@ -332,12 +358,16 @@ class SpacesController < ApplicationController
     end
   end
 
+  def require_approval?
+    current_site.require_space_approval?
+  end
+
   allow_params_for :space
   def allowed_params
     [ :name, :description, :logo_image, :public, :permalink, :disabled, :repository,
       :crop_x, :crop_y, :crop_w, :crop_h, :crop_img_w, :crop_img_h,
       :bigbluebutton_room_attributes =>
-        [ :id, :attendee_key, :moderator_key, :default_layout,
+        [ :id, :attendee_key, :moderator_key, :default_layout, :private,
           :welcome_msg, :presenter_share_only, :auto_start_video, :auto_start_audio ] ]
   end
 end

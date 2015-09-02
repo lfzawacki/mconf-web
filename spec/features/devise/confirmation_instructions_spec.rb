@@ -1,3 +1,9 @@
+# This file is part of Mconf-Web, a web application that provides access
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
+#
+# This file is licensed under the Affero General Public License version
+# 3 or later. See the LICENSE file.
+
 require 'spec_helper'
 require 'support/feature_helpers'
 
@@ -19,6 +25,7 @@ feature "Confirmation instructions" do
 
       # the email must have at least some text we expect and the confirmation link
       last_email.should_not be_nil
+      last_email.subject.should eql("[#{Site.current.name}] " + I18n.t('devise.mailer.confirmation_instructions.subject'))
       last_email.body.encoded.should match(/http.*users\/confirmation[^" ]*/)
       last_email.body.encoded.should match(t('devise.mailer.confirmation_instructions.confirmation_ok'))
       last_email.body.encoded.should match(t('devise.mailer.confirmation_instructions.welcome', email: user.email))
@@ -56,6 +63,7 @@ feature "Confirmation instructions" do
 
       # the email must have at least some text we expect and the confirmation link
       last_email.should_not be_nil
+      last_email.subject.should eql("[#{Site.current.name}] " + I18n.t('devise.mailer.confirmation_instructions.subject'))
       last_email.body.encoded.should match(/http.*users\/confirmation[^" ]*/)
       last_email.body.encoded.should match(t('devise.mailer.confirmation_instructions.confirmation_ok'))
       last_email.body.encoded.should match(t('devise.mailer.confirmation_instructions.welcome', email: user.email))
@@ -75,8 +83,8 @@ feature "Confirmation instructions" do
         }.not_to send_email
       end
 
-      current_path.should eq(user_confirmation_path)
-      has_field_with_error "user_email"
+      current_path.should eq(new_user_session_path)
+      has_success_message
     end
 
     scenario "and the user doesn't exist" do
@@ -88,8 +96,8 @@ feature "Confirmation instructions" do
         }.not_to send_email
       end
 
-      current_path.should eq(user_confirmation_path)
-      has_field_with_error "user_email"
+      current_path.should eq(new_user_session_path)
+      has_success_message
     end
   end
 end

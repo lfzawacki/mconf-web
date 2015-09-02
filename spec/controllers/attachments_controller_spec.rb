@@ -1,5 +1,5 @@
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
@@ -62,7 +62,7 @@ describe AttachmentsController do
     describe "orders the attachments properly"
 
     context "in a public space" do
-      let(:space) { FactoryGirl.create(:space, repository: true, public: true) }
+      let(:space) { FactoryGirl.create(:space_with_associations, repository: true, public: true) }
 
       context "logged in" do
         context "as a superuser" do
@@ -119,7 +119,7 @@ describe AttachmentsController do
     end
 
     context "in a private space" do
-      let(:space) { FactoryGirl.create(:space, repository: true, public: false) }
+      let(:space) { FactoryGirl.create(:space_with_associations, repository: true, public: false) }
 
       context "logged in" do
         context "as a superuser" do
@@ -297,7 +297,44 @@ describe AttachmentsController do
           }
 
           it { should redirect_to space_attachments_path(space) }
+
+          context "it creates a new recent activity" do
+            it { RecentActivity.last.trackable.should eq(Attachment.last) }
+            it { RecentActivity.last.owner.should eq(Attachment.last.space) }
+            it { RecentActivity.last.key.should eq('attachment.create') }
+          end
         end
+      end
+
+      context "with valid attributes but repeated file name" do
+        let!(:file) { Rack::Test::UploadedFile.new(File.open(File.join(Rails.root, '/spec/fixtures/files/test-logo.png'))) }
+        let!(:attachment) { FactoryGirl.create(:attachment, :space => space, :attachment => file) }
+
+        before(:each) {
+          expect {
+            post :create, :space_id => space.to_param, :uploaded_file => file
+          }.to change(space.attachments, :count).by(1)
+        }
+
+        it { should redirect_to space_attachments_path(space) }
+        it { Attachment.last.title.should_not eq(attachment.title) }
+        it { Attachment.last.title.should eq('test-logo_1.png') }
+      end
+
+      context "with valid attributes but repeated file name (of a file in another space)" do
+        let(:space2) { FactoryGirl.create(:space) }
+        let!(:file) { Rack::Test::UploadedFile.new(File.open(File.join(Rails.root, '/spec/fixtures/files/test-logo.png'))) }
+        let!(:attachment) { FactoryGirl.create(:attachment, :space => space2, :attachment => file) }
+
+        before(:each) {
+          expect {
+            post :create, :space_id => space.to_param, :uploaded_file => file
+          }.to change(space.attachments, :count).by(1)
+        }
+
+        it { should redirect_to space_attachments_path(space) }
+        it { Attachment.last.title.should eq(attachment.title) }
+        it { Attachment.last.title.should_not eq('test-logo_1.png') }
       end
 
       context "with invalid attributes"
@@ -313,7 +350,7 @@ describe AttachmentsController do
 
   describe "#destroy" do
     let(:user) { FactoryGirl.create(:superuser) }
-    let(:attachment) { FactoryGirl.create(:attachment) }
+    let(:attachment) { FactoryGirl.create(:attachment_with_associations) }
     let(:space) { attachment.space }
 
     context "as a logged in user" do

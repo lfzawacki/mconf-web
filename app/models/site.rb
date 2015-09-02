@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # This file is part of Mconf-Web, a web application that provides access
-# to the Mconf webconferencing system. Copyright (C) 2010-2012 Mconf
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
 #
 # This file is licensed under the Affero General Public License version
 # 3 or later. See the LICENSE file.
 
 class Site < ActiveRecord::Base
+
+  serialize :visible_locales, Array
 
   # Returns the current (default) site
   def self.current
@@ -13,10 +15,10 @@ class Site < ActiveRecord::Base
   end
 
   def signature_in_html
-    if signature
-      return signature.gsub(/\r\n?/,'<br>')
+    if signature.blank?
+      name
     else
-      return ""
+      signature.gsub(/\r\n?/, '<br>')
     end
   end
 

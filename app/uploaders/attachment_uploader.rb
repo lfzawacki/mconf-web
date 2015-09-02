@@ -1,3 +1,9 @@
+# This file is part of Mconf-Web, a web application that provides access
+# to the Mconf webconferencing system. Copyright (C) 2010-2015 Mconf.
+#
+# This file is licensed under the Affero General Public License version
+# 3 or later. See the LICENSE file.
+
 # encoding: utf-8
 
 class AttachmentUploader < CarrierWave::Uploader::Base
@@ -12,6 +18,23 @@ class AttachmentUploader < CarrierWave::Uploader::Base
 
   def cache_dir
     "#{Rails.root}/private/tmp/uploads/cache/#{model.id}"
+  end
+
+  # Rename files when the name conflicts with another one in the same space
+  def filename
+    return if !original_filename.present?
+    original_name = super
+
+    tries = 1
+    name = original_name
+    while (att = model.space.attachments.find { |a| a.title == name && a != model })
+      ext = File.extname(original_name)
+      base = File.basename(original_name, ext)
+      name = "#{base}_#{tries}#{ext}"
+      tries += 1
+    end
+
+    name
   end
 
   # Provide a default URL as a default if there hasn't been a file uploaded:

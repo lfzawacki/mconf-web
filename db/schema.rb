@@ -393,6 +393,7 @@ ActiveRecord::Schema.define(version: 20150903182639) do
     t.boolean  "require_space_approval",         default: false
     t.boolean  "forbid_user_space_creation",     default: false
     t.boolean  "shib_update_users",              default: false
+    t.string   "max_upload_size"
   end
 
   create_table "spaces", force: true do |t|

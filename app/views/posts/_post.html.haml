@@ -22,4 +22,4 @@
         %span.post-author= t('_other.user.removed')
       = icon_spam if post.spam
     .thread-text
-      %p= post.text
+      %p= auto_link(post.text, :urls, html: {target: '_blank'})

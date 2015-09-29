@@ -39,11 +39,11 @@
     .thread-text
       .block-collapsed
         %p
-          = first_words(thread.text, 200)
+          = auto_link(first_words(thread.text, 200) ,:urls, html:{ target:'_blank'})
           - if thread.text.length > 200 or !thread.children.empty?
             %a.link-to-expand{href: "parent-#{thread.id}"}= t('more')
       .block-expanded
-        %p= thread.text
+        %p= auto_link(thread.text, :urls, html: {target: '_blank'})
         - unless thread.children.size < 4
           .thread-observation
             = t('thread.show_last_comment', size: thread.three_last_comment().size, children: thread.children.size)

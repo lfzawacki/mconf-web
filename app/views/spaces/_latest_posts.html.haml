@@ -24,7 +24,7 @@
               %span.post-author= t('_other.user.removed')
             = formatted_time_ago post.updated_at
           .post-text
-            = first_words(strip_tags(post.text), 100)
+            = auto_link(first_words(post.text, 100) ,:urls, html:{ target:'_blank'})
 
   .content-block-footer.content-block-footer-fancy
     = link_to t('read_more'), space_posts_path(@space)
